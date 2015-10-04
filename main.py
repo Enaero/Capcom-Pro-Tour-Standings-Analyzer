@@ -17,8 +17,9 @@ class Tournament(object):
     I didn't think it was important.
     """
 
-    def __init__(self, points):
+    def __init__(self, points, name):
         self.points = deepcopy(points)
+        self.name = name
         self.points.sort()
 
     def peek(self):
@@ -61,6 +62,10 @@ class TournamentList(object):
         self.tournaments = deepcopy(tournaments)
         self.sort()
 
+    def peek_name(self, index=0):
+        if self.tournaments:
+            return self.tournaments[index].name
+
     def peek(self, index=0):
         if self.tournaments:
             return self.tournaments[index].peek()
@@ -75,7 +80,6 @@ class TournamentList(object):
     def pop(self, index=0):
         if self.tournaments:
             result = self.tournaments[index].pop()
-            self.sort()
             return result
 
     def remove(self, value, index=0):
@@ -93,8 +97,8 @@ class TournamentList(object):
             if candidate < smallest_value:
                 smallest = tourney
                 smallest_value = candidate
+        self.last_tournament_used = smallest.name
         removed = smallest.remove(value)
-        self.sort()
         return removed
 
     def __str__(self):
@@ -114,14 +118,17 @@ def worst_case_rank(ranking_list, player_index, tournaments):
     worst_rank = player_index
 
     for other in ranking_list[player_index+1:]:
+        tournaments.sort()
         surpass = player.points - other.points
         points = other.points
 
         count = 0
+        tournaments_used = []
         while (
             count < len(tournaments.tournaments) and
             tournaments.peek(count) + points < player.points
         ):
+            tournaments_used.append(tournaments.peek_name(count))
             points += tournaments.pop(count)
             count += 1
 
@@ -130,11 +137,13 @@ def worst_case_rank(ranking_list, player_index, tournaments):
 
         surpass = player.points - points
         removed = tournaments.remove(surpass, count)
+        tournaments_used.append(tournaments.last_tournament_used)
         points += removed
         worst_rank += 1
         print(
             other.name, other.points, 'surpasses',
-            player.name, 'by gaining', points-other.points
+            player.name, 'by gaining', points-other.points,
+            'at', tournaments_used
         )
     return worst_rank
 
@@ -165,12 +174,14 @@ if __name__ == "__main__":
 
     tournaments = []
     with open("schedule.txt", 'rt') as fp:
-        for tier in fp:
-            tier = tier.lower().strip()
-            tournaments.append(Tournament(tournament_tiers[tier]))
+        for line in fp:
+            data = line.split(' ')
+            tier = data[0].lower().strip()
+            name = data[1].strip()
+            tournaments.append(Tournament(tournament_tiers[tier], name))
 
     tlist = TournamentList(tournaments)
-    index = 0
+    index = 1
     print(
         "The lowest ranking", ranking[index].name,
         "can get is", worst_case_rank(ranking, index, tlist)+1
